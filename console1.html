@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Éditeur Python</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<style>
+  body { font-family: sans-serif; margin: 8px; }
+  textarea { width: 100%; height: 160px; box-sizing: border-box;
+             font-family: monospace; font-size: 14px; padding: 8px; }
+  button { padding: 6px 14px; margin: 6px 6px 6px 0; cursor: pointer; }
+  #out { background: #f4f4f4; border: 1px solid #ccc; border-radius: 6px;
+         padding: 8px; min-height: 60px; white-space: pre-wrap; font-size: 14px; }
+  #status { color: #666; font-size: 13px; }
+</style>
+</head>
+<body>
+<textarea id="code" spellcheck="false"></textarea>
+<div>
+  <button id="run" disabled>▶ Exécuter</button>
+  <button id="reset">↺ Réinitialiser</button>
+  <span id="status">Chargement de Python…</span>
+</div>
+<pre id="out"></pre>
+
+<script>
+// Code de départ à modifier selon l'activité
+const START = "# Écris ton code ici\nprint('Bonjour')\n";
+
+const code = document.getElementById('code');
+const out = document.getElementById('out');
+const runBtn = document.getElementById('run');
+const status = document.getElementById('status');
+let py;
+
+code.value = START;
+
+// Tabulation = 4 espaces
+code.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = code.selectionStart;
+    code.setRangeText('    ', s, code.selectionEnd, 'end');
+  }
+});
+
+async function init() {
+  py = await loadPyodide();
+  py.setStdout({ batched: s => out.textContent += s + "\n" });
+  py.setStderr({ batched: s => out.textContent += s + "\n" });
+  runBtn.disabled = false;
+  status.textContent = "Prêt";
+}
+
+runBtn.onclick = async () => {
+  out.textContent = "";
+  const ns = py.globals.get('dict')();   // espace de noms neuf à chaque exécution
+  try {
+    await py.runPythonAsync(code.value, { globals: ns });
+  } catch (e) {
+    out.textContent += e.message;
+  }
+  ns.destroy();
+};
+
+document.getElementById('reset').onclick = () => {
+  code.value = START;
+  out.textContent = "";
+};
+
+init();
+</script>
+</body>
+</html>
